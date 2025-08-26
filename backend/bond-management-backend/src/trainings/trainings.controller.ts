@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseUUIDPipe,
+  Query,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { TrainingsService } from './trainings.service';
 import { CreateTrainingDto } from './dto/create-training.dto';
 import { UpdateTrainingDto } from './dto/update-training.dto';
@@ -8,6 +20,7 @@ export class TrainingsController {
   constructor(private readonly trainingsService: TrainingsService) {}
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   create(@Body() createTrainingDto: CreateTrainingDto) {
     return this.trainingsService.create(createTrainingDto);
   }
@@ -17,18 +30,27 @@ export class TrainingsController {
     return this.trainingsService.findAll();
   }
 
+  @Get('provider/:providerId')
+  findByProvider(@Param('providerId', ParseUUIDPipe) providerId: string) {
+    return this.trainingsService.findByProvider(providerId);
+  }
+
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.trainingsService.findOne(+id);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.trainingsService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTrainingDto: UpdateTrainingDto) {
-    return this.trainingsService.update(+id, updateTrainingDto);
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateTrainingDto: UpdateTrainingDto,
+  ) {
+    return this.trainingsService.update(id, updateTrainingDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.trainingsService.remove(+id);
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.trainingsService.remove(id);
   }
 }

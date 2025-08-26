@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { BondAgreementsService } from './bond_agreements.service';
-import { BondAgreementsController } from './bond_agreements.controller';
+import { BondsAgreementService } from './bond_agreements.service';
+import { BondsAgreementController } from './bond_agreements.controller';
 
 @Module({
-  controllers: [BondAgreementsController],
-  providers: [BondAgreementsService],
+  controllers: [BondsAgreementController],
+  providers: [BondsAgreementService],
 })
 export class BondAgreementsModule {}

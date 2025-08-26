@@ -15,7 +15,7 @@ import { CreateBondAgreementDto } from './dto/create-bond_agreement.dto';
 import { UpdateBondAgreementDto } from './dto/update-bond_agreement.dto';
 
 @Controller('bonds')
-export class BondsController {
+export class BondsAgreementController {
   constructor(private readonly bondsAgreementService: BondsAgreementService) {}
 
   @Post()
