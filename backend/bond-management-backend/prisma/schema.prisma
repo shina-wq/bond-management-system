@@ -7,185 +7,182 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ========== ENUMS ==========
-enum BondStatus {
-  ACTIVE
-  COMPLETED
-  BREACHED
-}
-
-enum NotificationStatus {
-  PENDING
-  SENT
-  FAILED
-}
-
-// ========== MODELS ==========
 model employees {
-  id            String    @id @default(uuid())
-  employee_id   String    @unique
-  first_name    String
-  last_name     String
-  email         String    @unique
-  department    String
-  position      String
-  hire_date     DateTime
-  supervisor_id String?
-  is_active     Boolean   @default(true)
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+  id              String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  employee_id     String                @unique @db.VarChar(20)
+  first_name      String                @db.VarChar(100)
+  last_name       String                @db.VarChar(100)
+  email           String                @unique @db.VarChar(255)
+  phone_number    String?               @unique @db.VarChar(20)
+  department      String                @db.VarChar(100)
+  position        String                @db.VarChar(100)
+  hire_date       DateTime              @db.Date
+  supervisor_id   String?               @db.Uuid
+  created_at      DateTime?             @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?             @default(now()) @updatedAt @db.Timestamptz(6)
+  is_active       Boolean?              @default(true)
+  created_bonds   bond_agreements[]     @relation("BondCreatedBy")
+  bond_agreements bond_agreements[]     @relation("EmployeeBonds")
+  status_changes  bond_status_history[] @relation("ChangedByEmployee")
+  supervisor      employees?            @relation("EmployeeSupervisor", fields: [supervisor_id], references: [id], onUpdate: NoAction)
+  subordinates    employees[]           @relation("EmployeeSupervisor")
+  notifications   notifications[]       @relation("NotificationRecipient")
+  users           users?
 
-  // Relations
-  supervisor    employees?           @relation("EmployeeSupervisor", fields: [supervisor_id], references: [id])
-  subordinates  employees[]          @relation("EmployeeSupervisor")
-  bond_agreements bond_agreements[]  @relation("EmployeeBonds")
-  created_bonds bond_agreements[]    @relation("BondCreatedBy")
-  status_changes bond_status_history[] @relation("ChangedByEmployee")
-  notifications notifications[]      @relation("NotificationRecipient")
-  users         users?
-
+  @@index([department], map: "idx_employees_department")
+  @@index([email], map: "idx_employees_email")
+  @@index([supervisor_id], map: "idx_employees_supervisor")
   @@map("employees")
 }
 
 model training_providers {
-  id            String    @id @default(uuid())
-  name          String
-  contact_email String?
-  contact_phone String?
-  address       String?
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-
-  // Relations
+  id              String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name            String            @db.VarChar(255)
+  contact_email   String?           @db.VarChar(255)
+  contact_phone   String?           @db.VarChar(50)
+  address         String?
+  created_at      DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?         @default(now()) @updatedAt @db.Timestamptz(6)
   bond_agreements bond_agreements[]
+  trainings       trainings[]
 
   @@map("training_providers")
 }
 
 model bond_agreements {
-  id                   String      @id @default(uuid())
-  employee_id          String
-  training_provider_id String
-  training_name        String
+  id                   String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  employee_id          String                @db.Uuid
+  training_provider_id String                @db.Uuid
+  training_name        String                @db.VarChar(255)
   training_description String?
-  training_cost        Float
-  training_start_date  DateTime
-  training_end_date    DateTime
+  training_cost        Decimal               @db.Decimal(15, 2)
+  training_start_date  DateTime              @db.Date
+  training_end_date    DateTime              @db.Date
   bond_duration_months Int
-  bond_start_date      DateTime
-  bond_end_date        DateTime
-  document_path        String?
-  document_hash        String?
-  status               BondStatus  @default(ACTIVE)
-  created_by           String
-  created_at           DateTime    @default(now())
-  updated_at           DateTime    @updatedAt
+  bond_start_date      DateTime              @db.Date
+  bond_end_date        DateTime?             @default(dbgenerated("(bond_start_date + make_interval(months => bond_duration_months))")) @db.Date
+  document_path        String?               @db.VarChar(500)
+  document_hash        String?               @db.VarChar(64)
+  status               String?               @default("ACTIVE") @db.VarChar(20)
+  created_by           String                @db.Uuid
+  created_at           DateTime?             @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?             @default(now()) @updatedAt @db.Timestamptz(6)
+  creator              employees             @relation("BondCreatedBy", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  employee             employees             @relation("EmployeeBonds", fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  training_provider    training_providers    @relation(fields: [training_provider_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  status_history       bond_status_history[]
+  notifications        notifications[]
 
-  // Relations
-  employee         employees           @relation("EmployeeBonds", fields: [employee_id], references: [id])
-  training_provider training_providers @relation(fields: [training_provider_id], references: [id])
-  creator          employees           @relation("BondCreatedBy", fields: [created_by], references: [id])
-  status_history   bond_status_history[]
-  notifications    notifications[]
-
+  @@index([employee_id], map: "idx_bond_agreements_employee")
+  @@index([bond_end_date], map: "idx_bond_agreements_end_date")
+  @@index([status], map: "idx_bond_agreements_status")
+  @@index([training_provider_id], map: "idx_bond_agreements_training_provider")
   @@map("bond_agreements")
 }
 
 model bond_status_history {
-  id            String      @id @default(uuid())
-  bond_id       String
-  old_status    BondStatus?
-  new_status    BondStatus
-  changed_by    String
-  change_reason String?
-  created_at    DateTime    @default(now())
-
-  // Relations
-  bond       bond_agreements @relation(fields: [bond_id], references: [id])
-  changed_by_employee employees @relation("ChangedByEmployee", fields: [changed_by], references: [id])
+  id                  String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  bond_id             String          @db.Uuid
+  old_status          String?         @db.VarChar(20)
+  new_status          String          @db.VarChar(20)
+  changed_by          String          @db.Uuid
+  change_reason       String?
+  created_at          DateTime?       @default(now()) @db.Timestamptz(6)
+  bond                bond_agreements @relation(fields: [bond_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  changed_by_employee employees       @relation("ChangedByEmployee", fields: [changed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("bond_status_history")
 }
 
 model notification_rules {
-  id               String   @id @default(uuid())
-  name             String
-  description      String?
+  id                String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name              String          @db.VarChar(100)
+  description       String?
   days_before_event Int
-  template_subject String
-  template_body    String
-  is_active        Boolean  @default(true)
-  created_at       DateTime @default(now())
-
-  // Relations
-  notifications notifications[]
+  template_subject  String          @db.VarChar(255)
+  template_body     String
+  is_active         Boolean?        @default(true)
+  created_at        DateTime?       @default(now()) @db.Timestamptz(6)
+  notifications     notifications[]
 
   @@map("notification_rules")
 }
 
 model notifications {
-  id           String             @id @default(uuid())
-  bond_id      String
-  rule_id      String
-  recipient_id String
-  subject      String
+  id           String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  bond_id      String             @db.Uuid
+  rule_id      String             @db.Uuid
+  recipient_id String             @db.Uuid
+  subject      String             @db.VarChar(255)
   body         String
-  sent_at      DateTime?
-  status       NotificationStatus @default(PENDING)
-  retry_count  Int                @default(0)
+  sent_at      DateTime?          @default(now()) @db.Timestamptz(6)
+  status       String?            @default("PENDING") @db.VarChar(20)
+  retry_count  Int?               @default(0)
+  bond         bond_agreements    @relation(fields: [bond_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recipient    employees          @relation("NotificationRecipient", fields: [recipient_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rule         notification_rules @relation(fields: [rule_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  // Relations
-  bond       bond_agreements    @relation(fields: [bond_id], references: [id])
-  rule       notification_rules @relation(fields: [rule_id], references: [id])
-  recipient  employees          @relation("NotificationRecipient", fields: [recipient_id], references: [id])
-
+  @@index([bond_id], map: "idx_notifications_bond_id")
+  @@index([sent_at], map: "idx_notifications_sent_at")
+  @@index([status], map: "idx_notifications_status")
   @@map("notifications")
 }
 
 model user_roles {
-  id          String   @id @default(uuid())
-  name        String   @unique
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name        String    @unique @db.VarChar(50)
   description String?
-  permissions Json
-  created_at  DateTime @default(now())
-
-  // Relations
-  users users[]
+  permissions Json      @default("{}")
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  users       users[]
 
   @@map("user_roles")
 }
 
 model users {
-  id            String   @id @default(uuid())
-  employee_id   String   @unique
-  username      String   @unique
-  password_hash String
-  role_id       String
-  is_active     Boolean  @default(true)
-  last_login    DateTime?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id            String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  employee_id   String       @unique @db.Uuid
+  username      String       @unique @db.VarChar(100)
+  password_hash String       @db.VarChar(255)
+  role_id       String       @db.Uuid
+  is_active     Boolean?     @default(true)
+  last_login    DateTime?    @db.Timestamptz(6)
+  created_at    DateTime?    @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime?    @default(now()) @updatedAt @db.Timestamptz(6)
+  audit_logs    audit_logs[]
+  employee      employees    @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  role          user_roles   @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  // Relations
-  employee    employees @relation(fields: [employee_id], references: [id])
-  role        user_roles @relation(fields: [role_id], references: [id])
-  audit_logs  audit_logs[]
-
+  @@index([employee_id], map: "idx_users_employee")
+  @@index([role_id], map: "idx_users_role")
   @@map("users")
 }
 
 model audit_logs {
-  id            String   @id @default(uuid())
-  table_name    String
-  record_id     String
-  action        String
-  old_values    Json?
-  new_values    Json
-  performed_by  String
-  performed_at  DateTime @default(now())
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  table_name   String    @db.VarChar(100)
+  record_id    String    @db.Uuid
+  action       String    @db.VarChar(20)
+  old_values   Json?
+  new_values   Json?
+  performed_by String    @db.Uuid
+  performed_at DateTime? @default(now()) @db.Timestamptz(6)
+  performer    users     @relation(fields: [performed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  // Relations
-  performer users @relation(fields: [performed_by], references: [id])
-
+  @@index([performed_at], map: "idx_audit_logs_performed_at")
+  @@index([table_name, record_id], map: "idx_audit_logs_table_record")
   @@map("audit_logs")
+}
+
+model trainings {
+  id                       String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  providers_id             String             @db.Uuid
+  training_name            String             @db.VarChar(200)
+  training_description     String?
+  training_duration_months Int?
+  training_cost            Decimal?           @db.Decimal(15, 2)
+  location                 String?            @db.VarChar(150)
+  created_at               DateTime?          @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?          @default(now()) @db.Timestamptz(6)
+  training_providers       training_providers @relation(fields: [providers_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
