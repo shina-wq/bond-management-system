@@ -12,6 +12,17 @@ export class EmployeesService {
   constructor(private prisma: PrismaService) {}
 
   async create(createEmployeeDto: CreateEmployeeDto) {
+    // Check if department exists if provided
+    if (createEmployeeDto.department_id) {
+      const department = await this.prisma.departments.findUnique({
+        where: { id: createEmployeeDto.department_id },
+      });
+      if (!department) {
+        throw new NotFoundException(
+          `Department with ID ${createEmployeeDto.department_id} not found`,
+        );
+      }
+    }
     // Check for existing employee_id, email, and phone_number
     const existingEmployee = await this.prisma.employees.findUnique({
       where: { employee_id: createEmployeeDto.employee_id },
@@ -44,7 +55,7 @@ export class EmployeesService {
     return this.prisma.employees.findMany({
       where: { is_active: true },
       include: {
-        supervisor: {
+        employees: {
           select: { first_name: true, last_name: true, email: true },
         },
       },
@@ -56,10 +67,10 @@ export class EmployeesService {
     const employee = await this.prisma.employees.findUnique({
       where: { id },
       include: {
-        supervisor: {
+        employees: {
           select: { first_name: true, last_name: true, email: true },
         },
-        subordinates: {
+        other_employees: {
           select: {
             first_name: true,
             last_name: true,
@@ -67,8 +78,8 @@ export class EmployeesService {
             position: true,
           },
         },
-        bond_agreements: {
-          include: { training_provider: { select: { name: true } } },
+        bond_agreements_bond_agreements_employee_idToemployees: {
+          include: { training_providers: { select: { name: true } } },
         },
       },
     });
@@ -78,6 +89,17 @@ export class EmployeesService {
 
   async update(id: string, updateEmployeeDto: UpdateEmployeeDto) {
     try {
+      // Check if department exists if being updated
+      if (updateEmployeeDto.department_id) {
+        const department = await this.prisma.departments.findUnique({
+          where: { id: updateEmployeeDto.department_id },
+        });
+        if (!department) {
+          throw new NotFoundException(
+            `Department with ID ${updateEmployeeDto.department_id} not found`,
+          );
+        }
+      }
       // Check for unique constraint violations
       if (updateEmployeeDto.email) {
         const existingEmail = await this.prisma.employees.findFirst({

@@ -12,6 +12,9 @@ import { UserRolesModule } from './user_roles/user_roles.module';
 import { UsersModule } from './users/users.module';
 import { AuditLogsModule } from './audit_logs/audit_logs.module';
 import { TrainingsModule } from './trainings/trainings.module';
+import { DepartmentsModule } from './departments/departments.module';
+import { AuthModule } from './auth/auth.module';
+import { FilesModule } from './files/files.module';
 
 @Module({
   imports: [
@@ -26,6 +29,9 @@ import { TrainingsModule } from './trainings/trainings.module';
     UsersModule,
     AuditLogsModule,
     TrainingsModule,
+    DepartmentsModule,
+    AuthModule,
+    FilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -47,4 +47,9 @@ export class BondsAgreementController {
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.bondsAgreementService.remove(id);
   }
+
+  @Get('reports/financial-exposure/department')
+  getFinancialExposureByDepartment() {
+    return this.bondsAgreementService.getFinancialExposureByDepartment();
+  }
 }

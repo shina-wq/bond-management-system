@@ -24,7 +24,7 @@ export class CreateEmployeeDto {
   phone_number?: string;
 
   @IsString()
-  department: string;
+  department_id?: string;
 
   @IsString()
   position: string;

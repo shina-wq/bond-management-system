@@ -1,34 +1,46 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { AuditLogsService } from './audit_logs.service';
-import { CreateAuditLogDto } from './dto/create-audit_log.dto';
-import { UpdateAuditLogDto } from './dto/update-audit_log.dto';
 
 @Controller('audit-logs')
 export class AuditLogsController {
   constructor(private readonly auditLogsService: AuditLogsService) {}
-
-  @Post()
-  create(@Body() createAuditLogDto: CreateAuditLogDto) {
-    return this.auditLogsService.create(createAuditLogDto);
-  }
 
   @Get()
   findAll() {
     return this.auditLogsService.findAll();
   }
 
+  @Get('table/:tableName')
+  findByTable(@Param('tableName') tableName: string) {
+    return this.auditLogsService.findByTable(tableName);
+  }
+
+  @Get('record/:tableName/:recordId')
+  findByRecord(
+    @Param('tableName') tableName: string,
+    @Param('recordId', ParseUUIDPipe) recordId: string,
+  ) {
+    return this.auditLogsService.findByRecord(tableName, recordId);
+  }
+
+  @Get('performer/:performerId')
+  findByPerformer(@Param('performerId', ParseUUIDPipe) performerId: string) {
+    return this.auditLogsService.findByPerformer(performerId);
+  }
+
+  @Get('date-range')
+  findByDateRange(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.auditLogsService.findByDateRange(
+      new Date(startDate),
+      new Date(endDate),
+    );
+  }
+
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.auditLogsService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAuditLogDto: UpdateAuditLogDto) {
-    return this.auditLogsService.update(+id, updateAuditLogDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.auditLogsService.remove(+id);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.auditLogsService.findOne(id);
   }
 }

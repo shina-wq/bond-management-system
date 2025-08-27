@@ -37,16 +37,18 @@ export class BondsAgreementService {
     return this.prisma.bond_agreements.create({
       data: createBondDto,
       include: {
-        employee: {
+        employees_bond_agreements_employee_idToemployees: {
+          include: {
+            departments: true,
+          },
+        },
+        employees_bond_agreements_created_byToemployees: {
           select: {
             first_name: true,
             last_name: true,
-            email: true,
-            department: true,
           },
         },
-        training_provider: true,
-        creator: { select: { first_name: true, last_name: true } },
+        training_providers: true,
       },
     });
   }
@@ -54,15 +56,12 @@ export class BondsAgreementService {
   async findAll() {
     return this.prisma.bond_agreements.findMany({
       include: {
-        employee: {
-          select: {
-            first_name: true,
-            last_name: true,
-            email: true,
-            department: true,
+        employees_bond_agreements_employee_idToemployees: {
+          include: {
+            departments: true,
           },
         },
-        training_provider: true,
+        training_providers: true,
       },
       orderBy: { created_at: 'desc' },
     });
@@ -72,20 +71,21 @@ export class BondsAgreementService {
     const bond = await this.prisma.bond_agreements.findUnique({
       where: { id },
       include: {
-        employee: {
+        employees_bond_agreements_employee_idToemployees: {
+          include: {
+            departments: true,
+          },
+        },
+        employees_bond_agreements_created_byToemployees: {
           select: {
             first_name: true,
             last_name: true,
-            email: true,
-            department: true,
-            position: true,
           },
         },
-        training_provider: true,
-        creator: { select: { first_name: true, last_name: true } },
-        status_history: {
+        training_providers: true,
+        bond_status_history: {
           include: {
-            changed_by_employee: {
+            employees: {
               select: { first_name: true, last_name: true },
             },
           },
@@ -103,10 +103,12 @@ export class BondsAgreementService {
         where: { id },
         data: updateBondDto,
         include: {
-          employee: {
-            select: { first_name: true, last_name: true, email: true },
+          employees_bond_agreements_employee_idToemployees: {
+            include: {
+              departments: true,
+            },
           },
-          training_provider: true,
+          training_providers: true,
         },
       });
     } catch (error) {
@@ -124,5 +126,44 @@ export class BondsAgreementService {
         throw new NotFoundException(`Bond ${id} not found`);
       throw error;
     }
+  }
+
+  async getFinancialExposureByDepartment() {
+    const bonds = await this.prisma.bond_agreements.findMany({
+      where: { status: 'ACTIVE' },
+      include: {
+        employees_bond_agreements_employee_idToemployees: {
+          include: {
+            departments: true,
+          },
+        },
+      },
+    });
+
+    const departmentStats = bonds.reduce((acc, bond) => {
+      // Access the included relation
+      const employee = (bond as any)
+        .employees_bond_agreements_employee_idToemployees;
+      const departmentName = employee?.departments?.name || 'No Department';
+      const departmentId = employee?.departments?.id;
+
+      if (!acc[departmentName]) {
+        acc[departmentName] = {
+          department_id: departmentId,
+          department_name: departmentName,
+          total_exposure: 0,
+          bond_count: 0,
+        };
+      }
+
+      acc[departmentName].total_exposure += Number(bond.training_cost);
+      acc[departmentName].bond_count += 1;
+
+      return acc;
+    }, {});
+
+    return Object.values(departmentStats).sort(
+      (a: any, b: any) => b.total_exposure - a.total_exposure,
+    );
   }
 }

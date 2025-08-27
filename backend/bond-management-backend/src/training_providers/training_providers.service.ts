@@ -45,11 +45,13 @@ export class TrainingProvidersService {
       include: {
         bond_agreements: {
           include: {
-            employee: {
+            employees_bond_agreements_employee_idToemployees: {
               select: {
                 first_name: true,
                 last_name: true,
-                department: true,
+              },
+              include: {
+                departments: true,
               },
             },
           },

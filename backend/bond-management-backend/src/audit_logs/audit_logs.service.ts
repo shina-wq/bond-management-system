@@ -1,26 +1,144 @@
-import { Injectable } from '@nestjs/common';
-import { CreateAuditLogDto } from './dto/create-audit_log.dto';
-import { UpdateAuditLogDto } from './dto/update-audit_log.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class AuditLogsService {
-  create(createAuditLogDto: CreateAuditLogDto) {
-    return 'This action adds a new auditLog';
+  constructor(private prisma: PrismaService) {}
+
+  async findAll() {
+    return this.prisma.audit_logs.findMany({
+      include: {
+        users: {
+          include: {
+            employees: {
+              select: {
+                first_name: true,
+                last_name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { performed_at: 'desc' },
+      take: 100, // Limit to recent 100 logs
+    });
   }
 
-  findAll() {
-    return `This action returns all auditLogs`;
+  async findOne(id: string) {
+    const auditLog = await this.prisma.audit_logs.findUnique({
+      where: { id },
+      include: {
+        users: {
+          include: {
+            employees: {
+              select: {
+                first_name: true,
+                last_name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!auditLog) {
+      throw new NotFoundException(`Audit log with ID ${id} not found`);
+    }
+
+    return auditLog;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} auditLog`;
+  async findByTable(tableName: string) {
+    return this.prisma.audit_logs.findMany({
+      where: { table_name: tableName },
+      include: {
+        users: {
+          include: {
+            employees: {
+              select: {
+                first_name: true,
+                last_name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { performed_at: 'desc' },
+      take: 50,
+    });
   }
 
-  update(id: number, updateAuditLogDto: UpdateAuditLogDto) {
-    return `This action updates a #${id} auditLog`;
+  async findByRecord(tableName: string, recordId: string) {
+    return this.prisma.audit_logs.findMany({
+      where: {
+        table_name: tableName,
+        record_id: recordId,
+      },
+      include: {
+        users: {
+          include: {
+            employees: {
+              select: {
+                first_name: true,
+                last_name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { performed_at: 'desc' },
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} auditLog`;
+  async findByPerformer(performerId: string) {
+    const performer = await this.prisma.users.findUnique({
+      where: { id: performerId },
+    });
+
+    if (!performer) {
+      throw new NotFoundException(`Performer with ID ${performerId} not found`);
+    }
+
+    return this.prisma.audit_logs.findMany({
+      where: { performed_by: performerId },
+      include: {
+        users: {
+          include: {
+            employees: {
+              select: {
+                first_name: true,
+                last_name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { performed_at: 'desc' },
+      take: 50,
+    });
+  }
+
+  async findByDateRange(startDate: Date, endDate: Date) {
+    return this.prisma.audit_logs.findMany({
+      where: {
+        performed_at: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      include: {
+        users: {
+          include: {
+            employees: {
+              select: {
+                first_name: true,
+                last_name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { performed_at: 'desc' },
+    });
   }
 }
