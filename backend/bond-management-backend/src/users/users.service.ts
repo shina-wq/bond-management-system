@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -54,8 +55,14 @@ export class UsersService {
       throw new ConflictException(`Employee already has a user account`);
     }
 
+    // Hash password before saving
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 12);
+
     return this.prisma.users.create({
-      data: createUserDto,
+      data: {
+        ...createUserDto,
+        password_hash: hashedPassword,
+      },
       include: {
         employees: {
           select: {
