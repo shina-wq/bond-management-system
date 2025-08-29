@@ -112,7 +112,7 @@ model employees {
 
 model notification_rules {
   id                String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name              String          @db.VarChar(100)
+  name              String          @unique @db.VarChar(100)
   description       String?
   days_before_event Int
   template_subject  String          @db.VarChar(255)

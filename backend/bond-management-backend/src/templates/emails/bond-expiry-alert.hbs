@@ -1,0 +1,32 @@
+<html>
+  <head>
+    <meta charset='utf-8' />
+    <title>Bond Expiry Alert</title>
+  </head>
+  <body>
+    <h2>Bond Expiry Notification</h2>
+    <p>Dear {{recipientName}},</p>
+
+    <p>This is to inform you that the bond agreement for
+      <strong>{{employeeName}}</strong>
+      is expiring in
+      <strong>{{daysUntilExpiry}} days</strong>
+      on
+      <strong>{{expiryDate}}</strong>.</p>
+
+    <h3>Bond Details:</h3>
+    <ul>
+      <li><strong>Employee:</strong> {{employeeName}} ({{employeeId}})</li>
+      <li><strong>Training:</strong> {{trainingName}}</li>
+      <li><strong>Training Cost:</strong> {{trainingCost}}</li>
+      <li><strong>Bond Duration:</strong> {{bondDuration}} months</li>
+      <li><strong>Expiry Date:</strong> {{expiryDate}}</li>
+    </ul>
+
+    <p>Please take appropriate action to ensure compliance with the bond
+      agreement.</p>
+
+    <hr />
+    <p><small>This is an automated message from the Bond Management System.</small></p>
+  </body>
+</html>

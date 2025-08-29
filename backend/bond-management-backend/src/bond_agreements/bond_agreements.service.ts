@@ -118,6 +118,19 @@ export class BondsAgreementService {
     }
   }
 
+  async updateDocumentInfo(
+    id: string,
+    data: { document_path: string; document_hash: string },
+  ) {
+    return this.prisma.bond_agreements.update({
+      where: { id },
+      data: {
+        document_path: data.document_path,
+        document_hash: data.document_hash,
+      },
+    });
+  }
+
   async remove(id: string) {
     try {
       return await this.prisma.bond_agreements.delete({ where: { id } });

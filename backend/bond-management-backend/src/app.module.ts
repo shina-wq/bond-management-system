@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { BadRequestException, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -21,7 +21,16 @@ import { AuditLogsModule } from './audit_logs/audit_logs.module';
 import { TrainingsModule } from './trainings/trainings.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { AuthModule } from './auth/auth.module';
-import { FilesModule } from './files/files.module';
+
+import { MulterModule } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { v4 as uuidv4 } from 'uuid';
+
+import { MailerModule } from '@nestjs-modules/mailer';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { ScheduleModule } from '@nestjs/schedule';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -29,6 +38,59 @@ import { FilesModule } from './files/files.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    MulterModule.register({
+      storage: diskStorage({
+        destination: './uploads/bond-documents',
+        filename: (req, file, callback) => {
+          const uniqueSuffix = uuidv4();
+          const extension = extname(file.originalname);
+          callback(null, `${uniqueSuffix}${extension}`);
+        },
+      }),
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+      },
+      fileFilter: (req, file, callback) => {
+        const allowedMimeTypes = [
+          'application/pdf',
+          'image/jpeg',
+          'image/png',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+
+        if (allowedMimeTypes.includes(file.mimetype)) {
+          callback(null, true);
+        } else {
+          callback(new BadRequestException('Invalid file type'), false);
+        }
+      },
+    }),
+    MailerModule.forRootAsync({
+      useFactory: () => ({
+        transport: {
+          host: process.env.SMTP_HOST,
+          port: parseInt(process.env.SMTP_PORT || '587'),
+          secure: false,
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASSWORD,
+          },
+        },
+        defaults: {
+          from: `"Bond Management System" <${process.env.SMTP_FROM_EMAIL}>`,
+        },
+        template: {
+          dir: join(__dirname, 'templates/emails'),
+          adapter: new HandlebarsAdapter(),
+          options: {
+            strict: true,
+          },
+        },
+      }),
+    }),
+    ScheduleModule.forRoot(),
+
     PrismaModule,
     UserRolesModule,
     EmployeesModule,
@@ -42,7 +104,6 @@ import { FilesModule } from './files/files.module';
     TrainingsModule,
     DepartmentsModule,
     AuthModule,
-    FilesModule,
   ],
   controllers: [AppController],
   providers: [
